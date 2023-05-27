@@ -7,7 +7,7 @@ def get_source(torrent_data):
     try:
         return torrent_data[b"info"][b"source"]
     except KeyError:
-        return b"empty"
+        return None
 
 def get_infohash(torrent_data):
     encoded_info = bencoder.encode(torrent_data[b"info"])

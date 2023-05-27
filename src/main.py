@@ -7,7 +7,7 @@ from downloader import get_torrent_id, get_torrent_url, get_torrent_filepath, do
 from filesystem import create_folder, get_files, get_filename
 from parser import get_torrent_data, get_infohash, get_new_hash, get_source, save_torrent_data
 from progress import Progress
-import json
+from urllib.parse import urlparse
 
 def gen_infohash_dict(local_torrents):
     infohash_dict = {}
@@ -19,6 +19,11 @@ def gen_infohash_dict(local_torrents):
 
     return infohash_dict
 
+ops_sources = (b"OPS", b"APL")
+red_sources = (b"RED", b"PTH")
+
+ops_announce = "home.opsfet.ch"
+red_announce = "flacsfor.me"
 
 def main():
     create_folder(args.folder_out)
@@ -41,16 +46,21 @@ def main():
 
         print(f"{i}/{p.total}) {filename}")
 
-        if source == b"OPS" and args.ops_to_red:
+        announce_url = urlparse(torrent_data[b'announce'])
+        announce_loc = announce_url.netloc.decode('utf-8')
+        if announce_loc == ops_announce:
             api = red
-            new_sources = [b"RED"]
-            if args.pth:
-                new_sources.append(b"PTH")
-        elif source in (b"PTH", b"RED") and args.red_to_ops:
-            new_sources = [b"OPS"]
+            new_sources = red_sources
+        elif announce_loc == red_announce:
             api = ops
+            new_sources = ops_sources
         else:
-            p.skipped.print(f"Skipped: source is {source.decode('utf-8')}.")
+            try:
+                print_source = source.decode('utf-8')
+            except:
+                print_source = "empty"
+
+            p.skipped.print(f"Skipped: source is {print_source}.")
             continue
 
         # TODO: make it so you don't calc hashes twice or find a better flow control for this.
@@ -106,14 +116,9 @@ def main():
                         f"Found with source {new_source}, "
                         f"but the .torrent already exists in the output directory."
                     )
-                break  # Skip the PTH check if found on RED
+                break  # Skip the other source hash checks if successful
             elif torrent_details["error"] in known_errors:
-                if not args.pth:
-                    p.not_found.print(
-                        f"Not found with source {new_source}.",
-                        add=False
-                    )
-                elif args.pth and i == 1:
+                if i == 1:
                     p.not_found.print(
                         f"Not found with sources "
                         f"{', '.join(x.decode('utf-8') for x in new_sources)}.",
