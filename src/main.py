@@ -87,6 +87,7 @@ def main():
             new_source = new_source.decode("utf-8")
             known_errors = ("bad hash parameter", "bad parameters")
 
+            torrent_successful = False
             if status == "success":
                 torrent_filepath = get_torrent_filepath(
                     torrent_details, api.sitename, args.folder_out
@@ -116,6 +117,7 @@ def main():
                         f"Found with source {new_source}, "
                         f"but the .torrent already exists in the output directory."
                     )
+                torrent_successful = True
                 break  # Skip the other source hash checks if successful
             elif torrent_details["error"] in known_errors:
                 if i == 1:
@@ -124,12 +126,14 @@ def main():
                         f"{', '.join(x.decode('utf-8') for x in new_sources)}.",
                         add=False,
                     )
-                p.not_found.increment()
             else:
                 p.error.print(
                     f"Unexpected error while using source {new_source}"
                     f"{Fore.LIGHTBLACK_EX}:\n{str(torrent_details)}"
                 )
+
+        if not torrent_successful:
+            p.not_found.increment()
 
     print(p.report())
 
