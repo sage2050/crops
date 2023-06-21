@@ -17,8 +17,8 @@ def gen_infohash_dict(files):
         infohash_dict[infohash] = torrent_data[b"info"][b"name"].decode("utf8")
     return infohash_dict
 
-ops_sources = (b"OPS", b"APL")
-red_sources = (b"RED", b"PTH")
+ops_sources = (b"OPS", b"APL", b"")
+red_sources = (b"RED", b"PTH", b"")
 
 ops_announce = "home.opsfet.ch"
 red_announce = "flacsfor.me"
@@ -85,7 +85,12 @@ def main():
             hash_ = get_new_hash(torrent_data, new_source)
             torrent_details = api.find_torrent(hash_)
             status = torrent_details["status"]
-            new_source = new_source.decode("utf-8")
+
+            try:
+                new_source = new_source.decode("utf-8")
+            except:
+                new_source = "empty"
+
             known_errors = ("bad hash parameter", "bad parameters")
 
             torrent_successful = False
@@ -118,7 +123,7 @@ def main():
                 if i == 1:
                     p.not_found.print(
                         f"Not found with sources "
-                        f"{', '.join(x.decode('utf-8') for x in new_sources)}.",
+                        f"{', '.join(x.decode('utf-8') or 'empty' for x in new_sources)}.",
                         add=False,
                     )
             else:
