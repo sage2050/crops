@@ -9,14 +9,12 @@ from parser import get_torrent_data, get_infohash, get_new_hash, get_source, sav
 from progress import Progress
 from urllib.parse import urlparse
 
-def gen_infohash_dict(local_torrents):
+def gen_infohash_dict(files):
     infohash_dict = {}
-    for file in local_torrents:
-        with open(file, mode="rb") as f:
-            torrent_data = get_torrent_data(file)
-            infohash = get_infohash(torrent_data)
-            infohash_dict[infohash] = get_filename(file)
-
+    for file in files:
+        torrent_data = get_torrent_data(file)
+        infohash = get_infohash(torrent_data)
+        infohash_dict[infohash] = torrent_data[b"info"][b"name"].decode("utf8")
     return infohash_dict
 
 ops_sources = (b"OPS", b"APL")
@@ -28,12 +26,13 @@ red_announce = "flacsfor.me"
 def main():
     create_folder(args.folder_out)
     local_torrents = get_files(args.folder_in)
+    dest_torrents = get_files(args.folder_out)
     p = Progress(len(local_torrents))
-
     if args.download:
         p.generated.name = "Downloaded for cross-seeding"
 
-    infohash_dict = gen_infohash_dict(local_torrents)
+    in_infohash_dict = gen_infohash_dict(local_torrents)
+    out_infohash_dict = gen_infohash_dict(dest_torrents)
 
     for i, torrent_path in enumerate(local_torrents, 1):
         filename = get_filename(torrent_path)
@@ -63,19 +62,21 @@ def main():
             p.skipped.print(f"Skipped: source is {print_source}.")
             continue
 
-        # TODO: make it so you don't calc hashes twice or find a better flow control for this.
         found_infohash_match = False
         for new_source in new_sources:
             hash_ = get_new_hash(torrent_data, new_source)
-            try:
-                dest_hash_file = infohash_dict[hash_]
+            if hash_ in in_infohash_dict:
                 p.already_exists.print(
-                    f"An infohash match was found in the input directory with source {new_source.decode('utf-8')}."
+                    f"A match was found in the input directory with source {new_source.decode('utf-8')}."
                 )
                 found_infohash_match = True
                 break
-            except KeyError:
-                continue
+            if hash_ in out_infohash_dict:
+                p.already_exists.print(
+                    f"A match was found in the output directory with source {new_source.decode('utf-8')}."
+                )
+                found_infohash_match = True
+                break
 
         if found_infohash_match:
             continue
@@ -92,17 +93,16 @@ def main():
                 torrent_filepath = get_torrent_filepath(
                     torrent_details, api.sitename, args.folder_out
                 )
+                torrent_id = get_torrent_id(torrent_details)
 
-                if torrent_filepath and args.download:
-                    torrent_id = get_torrent_id(torrent_details)
+                if args.download:
                     download_torrent(api, torrent_filepath, torrent_id)
 
                     p.generated.print(
                         f"Found with source {new_source} "
                         f"and downloaded as '{get_filename(torrent_filepath)}'."
                     )
-                elif torrent_filepath:
-                    torrent_id = get_torrent_id(torrent_details)
+                else:
                     torrent_data[b"announce"] = api.announce_url
                     torrent_data[b"comment"] = get_torrent_url(api.site_url, torrent_id)
 
@@ -111,11 +111,6 @@ def main():
                     p.generated.print(
                         f"Found with source {new_source} "
                         f"and generated as '{get_filename(torrent_filepath)}'."
-                    )
-                else:
-                    p.already_exists.print(
-                        f"Found with source {new_source}, "
-                        f"but the .torrent already exists in the output directory."
                     )
                 torrent_successful = True
                 break  # Skip the other source hash checks if successful
