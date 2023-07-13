@@ -9,13 +9,13 @@ from parser import get_torrent_data, get_infohash, get_new_hash, get_source, sav
 from progress import Progress
 from urllib.parse import urlparse
 
-def gen_infohash_dict(files):
-    infohash_dict = {}
+def gen_infohash_set(files):
+    infohash_set = set()
     for file in files:
         torrent_data = get_torrent_data(file)
         infohash = get_infohash(torrent_data)
-        infohash_dict[infohash] = torrent_data[b"info"][b"name"].decode("utf8")
-    return infohash_dict
+        infohash_set.add(infohash)
+    return infohash_set
 
 ops_sources = (b"OPS", b"APL", b"")
 red_sources = (b"RED", b"PTH", b"")
@@ -31,8 +31,8 @@ def main():
     if args.download:
         p.generated.name = "Downloaded for cross-seeding"
 
-    in_infohash_dict = gen_infohash_dict(local_torrents)
-    out_infohash_dict = gen_infohash_dict(dest_torrents)
+    in_infohash_set = gen_infohash_set(local_torrents)
+    out_infohash_set = gen_infohash_set(dest_torrents)
 
     for i, torrent_path in enumerate(local_torrents, 1):
         filename = get_filename(torrent_path)
@@ -65,14 +65,14 @@ def main():
 
         found_infohash_match = False
         for new_source in new_sources:
-            hash_ = get_new_hash(torrent_data, new_source)
-            if hash_ in in_infohash_dict:
+            new_hash = get_new_hash(torrent_data, new_source)
+            if new_hash in in_infohash_set:
                 p.already_exists.print(
                     f"A match was found in the input directory with source {new_source.decode('utf-8')}."
                 )
                 found_infohash_match = True
                 break
-            if hash_ in out_infohash_dict:
+            if new_hash in out_infohash_set:
                 p.already_exists.print(
                     f"A match was found in the output directory with source {new_source.decode('utf-8')}."
                 )
@@ -83,8 +83,8 @@ def main():
             continue
 
         for i, new_source in enumerate(new_sources, 0):
-            hash_ = get_new_hash(torrent_data, new_source)
-            torrent_details = api.find_torrent(hash_)
+            new_hash = get_new_hash(torrent_data, new_source)
+            torrent_details = api.find_torrent(new_hash)
             status = torrent_details["status"]
 
             try:
