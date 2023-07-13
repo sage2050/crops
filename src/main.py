@@ -53,14 +53,14 @@ def main():
 
         found_infohash_match = False
         for new_source in new_sources:
-            hash_ = get_new_hash(torrent_data, new_source)
-            if hash_ in in_infohash_set:
+            new_hash = get_new_hash(torrent_data, new_source)
+            if new_hash in in_infohash_set:
                 p.already_exists.print(
                     f"A match was found in the input directory with source {new_source.decode('utf-8')}."
                 )
                 found_infohash_match = True
                 break
-            if hash_ in out_infohash_set:
+            if new_hash in out_infohash_set:
                 p.already_exists.print(
                     f"A match was found in the output directory with source {new_source.decode('utf-8')}."
                 )
@@ -71,8 +71,8 @@ def main():
             continue
 
         for i, new_source in enumerate(new_sources, 0):
-            hash_ = get_new_hash(torrent_data, new_source)
-            torrent_details = api.find_torrent(hash_)
+            new_hash = get_new_hash(torrent_data, new_source)
+            torrent_details = api.find_torrent(new_hash)
             status = torrent_details["status"]
             new_source = new_source.decode("utf-8")
             known_errors = ("bad hash parameter", "bad parameters")
