@@ -36,13 +36,13 @@ def main():
 
     for i, torrent_path in enumerate(local_torrents, 1):
         filename = get_filename(torrent_path)
+        print(f"{i}/{p.total}) {filename}")
+
         try:
             torrent_data = get_torrent_data(torrent_path)
         except AssertionError:
             p.error.print("Decoding error.")
             continue
-
-        print(f"{i}/{p.total}) {filename}")
 
         try:
             announce_data = torrent_data[b'announce']
@@ -52,6 +52,7 @@ def main():
 
         announce_url = urlparse(announce_data)
         announce_loc = announce_url.netloc.decode('utf-8')
+
         if announce_loc == ops_announce:
             api = red
             new_sources = red_sources
@@ -59,13 +60,7 @@ def main():
             api = ops
             new_sources = ops_sources
         else:
-            try:
-                print_source = get_source(torrent_data).decode('utf-8')
-            except:
-                print_source = "empty"
-
-            # TODO: make this message clearer
-            p.skipped.print(f"Skipped: source is {print_source}.")
+            p.skipped.print(f"Skipped: Torrent announces to {announce_loc}")
             continue
 
         found_infohash_match = False
